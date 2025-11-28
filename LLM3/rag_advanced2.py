@@ -65,6 +65,7 @@ check_prompt = ChatPromptTemplate.from_template("""
 # LCEL 체인 구성
 check_prompt_chain = check_prompt | llm | StrOutputParser()
 
+# 관련있는 문서만 필터링하여 해당 문서를 relevant 리스트에 저장
 def filler_relevant_docs(docs, question):
     '''관련 있는 문서만 필터링'''
     relevant = []
@@ -75,8 +76,6 @@ def filler_relevant_docs(docs, question):
         if is_relevant:
             relevant.append(doc)
     return relevant
-
-# 관련성을 평가후 답변생성
 
 #1. 문서를 검색(리트리버를 이용해서 )
 question = ''
