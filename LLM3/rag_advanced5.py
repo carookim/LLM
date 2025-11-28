@@ -50,3 +50,50 @@ retriever = vectorstore.as_retriever(
 llm = ChatOpenAI(model='gpt-4o-mini',temperature=0)
 
 # 5. Fusion Retrieval       (융합 검색) - 키워 + 벡터 검색 결합
+# 최종 답변
+rag_prompt = ChatPromptTemplate.from_messages([
+    ('system','제공된 문맥을 바탕으로 한국어로 답변하세요'),
+    ('human', '문맥:\n{context}\n\n질문:{question}\n\n답변:')
+])
+
+# 융합검색
+# 1 개별 검색 결과 비교
+# 2 융합 결과로 답변 생성
+
+from langchain_community.retrievers import BM25Retriever
+# BM25 리트리버         : 키워드기반
+# Vector 리트리버       : 의미기반
+bm25_retriever = BM25Retriever.from_documents(doc_splits)
+bm25_retriever.k = 3
+
+question = 'VectorDB의 종류를 알려주세요'
+ # 백터 검색
+vector_docs = retriever.invoke(question)
+# BM25 검색
+bm25_docs = bm25_retriever.invoke(question)
+fusion_scores = {}
+# 백터 검색 결과 점수
+for rank, doc in enumerate(vector_docs):
+    doc_key = doc.page_content[:50]
+    score = 1 / (60 + rank)
+    fusion_scores[doc_key] = fusion_scores.get(doc_key,0) + score
+# BM25 검색 결과 점수
+for rank, doc in enumerate(bm25_docs):
+    doc_key = doc.page_content[:50]
+    score = 1 / (60 + rank)
+    fusion_scores[doc_key] = fusion_scores.get(doc_key,0) + score
+# 점수로 정렬
+sorted_docs =  sorted(
+    fusion_scores.items(), key=lambda x : x[1], reverse=True
+)
+
+# print(f'fusion docs 결과 상위 3개 : {sorted_docs[:3]}')
+docs = []
+for doc,score in sorted_docs[:3]:
+    docs.append(doc)
+
+inputs = '\n\n---\n\n'.join(docs)
+
+rag_prompt_chain = rag_prompt | llm | StrOutputParser()
+result = rag_prompt_chain.invoke({'context':inputs, 'question':question})
+print(result)
