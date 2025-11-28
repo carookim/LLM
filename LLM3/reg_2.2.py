@@ -28,7 +28,7 @@ else:
 embedding_model = OpenAIEmbeddings(
     model = 'text-embedding-3-small'
 )
-
+#-----------------------------------------------------------------------
 # 단일 텍스트 임베딩 테스트
 test_text = 'RAG는 검색 증강 생성 기술입니다.'
 
@@ -70,9 +70,11 @@ for i, (sent, emb) in enumerate(zip(test_sentences[1:],embeddings[1:]), 1):
 # 저장 : 텍스트(청크) -> 임베딩(백터) -> VectorDB(저장)
 # 검색 : 질문 -> 임베딩(백터) -> 유사도검색 -> top-k문서 반환
 
+#-----------------------------------------------------------------------
 # chromaDB에 청크 저장
 start_time = time.time()
 # chromaDB 생성(인메모리)
+# 청크단위로 자른 데이터파일을 가져와서 임베딩 모델에 돌려 벡터DB를 생성하고 그걸 저장
 vectorstore = Chroma.from_documents(
     documents = doc_chunks,
     collection_name = 'reg_2.2',
@@ -94,11 +96,12 @@ for query in test_queries:
     # 유사문서 검색 상위 2개
     results = vectorstore.similarity_search_with_score(query, k=2)
     for i, (doc, score) in enumerate(results, 1):
-        source = doc.metadata.get('source','unknown')
-        preview = doc.page_content.strip()[:80].replace('\n',' ')
+        source = doc.metadata.get('source','unknown') #^
+        preview = doc.page_content.strip()[:80].replace('\n',' ') #^
         print(f' {i} {source} (거리 : {score:.4f})')
         print(f'     {preview}')
 
+#-----------------------------------------------------------------------
 # 다양한 검색 옵션
 print('다양한 검색 옵션')
 # 리트리버 생성
