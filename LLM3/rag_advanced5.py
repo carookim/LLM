@@ -48,3 +48,5 @@ retriever = vectorstore.as_retriever(
     search_kwargs = {'k' : 3}
 )
 llm = ChatOpenAI(model='gpt-4o-mini',temperature=0)
+
+# 5. Fusion Retrieval       (융합 검색) - 키워 + 벡터 검색 결합

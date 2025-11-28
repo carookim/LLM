@@ -78,6 +78,11 @@ for doc in docs:
         compressed.append(compress_result) 
         sources.append( os.path.basename(doc.metadata.get('source',"") ))
 
+# 함수 적용하는 법? #^
+# def format_docs(docs):
+#     '''문서를 문자열로 포멧팅'''
+#     return '\n\n---\n\n'.join([ doc.page_content for doc in docs ])
+
 context = '\n\n---\n\n'.join(compressed)    
 print('-'*30)
 print(context)

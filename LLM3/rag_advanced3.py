@@ -75,6 +75,7 @@ def filler_relevant_docs(docs, question):
 
 # 관련성을 평가후 답변생성
 
+###
 #1. 문서를 검색(리트리버를 이용해서 )
 question = '환율이 급격히 상승한 이유는?'
 docs = retriever.invoke(question)
@@ -85,6 +86,7 @@ print(f' relevant_docs 개수 : {len(relevant_docs)}개')
 
 if not relevant_docs:
     raise ValueError('관련있는 문서가 없어서 답변을 종료합니다.다른 질문을 입력하세요')
+### 여기 정확한 용도
 
 
 def format_docs(docs):
