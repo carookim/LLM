@@ -26,7 +26,7 @@ from langchain_core.documents import Document
 
 # 문서로드
 script_dir = os.path.dirname(os.path.abspath(__file__) )
-docs_path = os.path.join(script_dir,'sample_docs', 'langgraph_rag')
+docs_path = os.path.join(script_dir,'sample_docs')
 print(f'docs paths : {docs_path}')
 
 loader = DirectoryLoader(
@@ -58,7 +58,7 @@ vectorstore =  Chroma.from_documents(
 )
 
 # 리트리버
-retriever =  vectorstore.as_retriever(
+base_retriever =  vectorstore.as_retriever(
     search_type = 'similarity',
     search_kwargs = {'k' : 3}
 )
@@ -80,32 +80,37 @@ def format_docs(docs):
 print('# 1. Query Transformation  (질문 변화) - 검색 최적화')
 print('사용자의 질문을 검색에 최적화된 형태로 변환합니다.\n')
 
+# 질문 재작성 프롬프트
+rewrite_prompt=  ChatPromptTemplate.from_template('''
+다음 질문을 검색에 더 적합한 형태로 변환해 주세요.
+키워드 중심으로 명화기하게 바꿔주세요
+변환된 검색어만 출력하세요
+
+원본 질문: {qeustion}
+변환된 검색어:
+''')
+rewrite_chain =  rewrite_prompt | llm | StrOutputParser()
+
+# RAG프롬프트
+rag_prompt = ChatPromptTemplate.from_messages([
+    ('system','제공된 문맥을 바탕으로 한국어로 답변하세요'),
+    ('human', '문맥:\n{context}\n\n질문:{question}\n\n답변:')
+])
+
 # 질문 재작성 프롬프트 함수 생성
 def query_transformation(question):
     '''Query Transformation  (질문 변화) - 검색 최적화'''
     print(' 1. Query Transformation  (질문 변화) - 검색 최적화')
     print('사용자 질문을 검색에 최적화된 형태로 변환합니다.\n')
 
-    # 질문 재작성 프롬프트
-    rewrite_prompt=  ChatPromptTemplate.from_template('''
-    다음 질문을 검색에 더 적합한 형태로 변환해 주세요.
-    키워드 중심으로 명화기하게 바꿔주세요
-    변환된 검색어만 출력하세요
-
-    원본 질문: {qeustion}
-    변환된 검색어:
-    ''')
-
-    rewrite_chain =  rewrite_prompt | llm | StrOutputParser()
-
-    # RAG프롬프트
-    rag_prompt = ChatPromptTemplate.from_messages([
-        ('system','제공된 문맥을 바탕으로 한국어로 답변하세요'),
-        ('human', '문맥:\n{context}\n\n질문:{question}\n\n답변:')
-    ])
 
     # 질문 변환
-    docs = rewrite_chain.invoke({'qeustion' : question}) ##
+    transformed = rewrite_chain.invoke({'qeustion' : question})
+    print(f'원본 질문 : {question}')
+    print(f'transformed 질문 : {transformed}')
+    
+    # 변환된 질문으로 검색
+    docs = base_retriever.invoke(transformed)  ##
     context = format_docs(docs) ##
 
     answer_chain = rag_prompt | llm | StrOutputParser()
@@ -138,7 +143,34 @@ multi_query_prompt = ChatPromptTemplate.from_template('''
 # lag chain 구성 LCEL
 multi_query_chain = multi_query_prompt | llm | StrOutputParser()
 
-# multi_query_chain 실행해서 결과출력
-result = multi_query_chain.invoke({'qeustion' : test_question[0]})
-print(result)
+def multi_query_rag(question):
+    # multi_query_chain 실행해서 결과출력
+    queries_text = multi_query_chain.invoke({'qeustion' : test_question[0]})
+    print(queries_text)
 
+    queries = [q.strip() for q in queries_text.strip().split('\n') if q.strip()]
+    # 각 쿼리(질문)으로 검색하고 결과를 통합 (중복제거)
+    all_docs = []
+    seen_contents = set()
+    for query in queries:
+        docs = base_retriever.invoke(query)
+        for doc in docs:
+            if doc.page_content not in seen_contents:
+                seen_contents.add(doc.page_content)
+                all_docs.append(doc)
+    print(f'검색된 문서의 개수 : {len(all_docs)}')
+    # 답변 생성  상위 3개만 사용
+    context = format_docs(all_docs[:3])
+    answer_chain = rag_prompt | llm | StrOutputParser()
+    answer = answer_chain.invoke({'context' : context, 'question':question})
+    return answer, [ os.path.basename(d.metadata.get('source','unknown')) for d in all_docs ]
+
+# 테스트
+test = [
+    'LangChain 시작하는 방법'
+]
+for q in test:
+    print(f'question : {q}')
+    answer, sources = multi_query_rag(q)
+    print(f'answer : {answer}')
+    print(f'answer : {sources}')
