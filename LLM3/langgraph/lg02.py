@@ -44,16 +44,16 @@ def conditional_graph():
     }
     
     # 노드함수들을 구현
-    def internal_search_node(state:ConditionalState) -> dict:
+    def iternal_search_node(state:ConditionalState) -> dict:
         '''
         내부 문서 검색 -> 여기서 Retriever 작동시킴
         '''
         question = state['question']
         documents = []
-        for keyword,docs in INTERNAL_DOCS:
+        for keyword,docs in INTERNAL_DOCS.items():
             if keyword in question:
                 documents.extend(docs)
-        return {'document':documents,'search_type':'internal'}
+        return {'documents':documents,'search_type':'internal'}
     
     def web_search_node(state:ConditionalState) -> dict:
         '''
@@ -76,7 +76,7 @@ def conditional_graph():
         )
         chain = prompt | llm | StrOutputParser
         answer = chain.invoke({'context':context,'question':state['question']})
-        return {'answer':f'[{state['search_type']}]{answer}'}
+        return {'answer':f"[{state['search_type']}] {answer}"}
     
     # 조건함수
     def decide_search_type(state:ConditionalState) -> Literal['generate','web_search']:
@@ -89,7 +89,44 @@ def conditional_graph():
             return 'web_search'
         
     # 그래프 구축
-    graph = StateGraph()
-    graph.add_note('iternal_Search',iternal_search_node)
+    graph = StateGraph(ConditionalState)
+    graph.add_node('iternal_search',iternal_search_node)
+    graph.add_node('web_search',web_search_node)
+    graph.add_node('generate',generate_node)
     
+    graph.add_edge(START,'iternal_search')
+    graph.add_conditional_edges(
+        'iternal_search',
+        decide_search_type,
+    {
+        'generate':'generate',
+        'web_search': 'web_search'
+    }
+    )
+    graph.add_edge('web_search','generate')
+    graph.add_edge('generate',END)
     
+    app = graph.compile()
+    
+    # 테스트 1: 내부문서에 있는 질문
+    print('\n[테스트1] 내부 문서가 존재하는 경우')
+    result1 = app.invoke({
+        'question' : '회사 AI 정략은?',
+        'documents' : [],
+        'search_type' : '',
+        'answer':''
+    })
+    print(f"답변 : {result1['anwser']}")
+    
+    # 테스트 2: 내부문서에 있는 질문
+    print('\n[테스트1] 내부 문서가 존재하는 경우')
+    result2 = app.invoke({
+        'question' : '오늘의 날씨는?',
+        'documents' : [],
+        'search_type' : '',
+        'answer':''
+    })
+    print(f"답변 : {result2['anwser']}")
+    
+# 조건부 분기 테스트
+conditional_graph()
