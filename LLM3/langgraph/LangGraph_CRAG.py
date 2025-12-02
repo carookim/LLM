@@ -206,18 +206,18 @@ def generate_node(state: CGRAState) -> dict:
     prompt = ChatPromptTemplate.from_messages([
         ("system", """당신은 제공된 문맥을 바탕으로 질문에 답변하는 AI 어시스턴트입니다.
 
-규칙:
-1. 제공된 문맥 내의 정보를 우선적으로 사용하세요.
-2. 답변은 한국어로 명확하고 구조화되게 작성하세요.
-3. 웹 검색 결과가 포함된 경우, 해당 정보도 적절히 활용하세요.
-4. 확실하지 않은 정보는 추측하지 마세요."""),
-        ("human", """문맥(Context):
-{context}
+    규칙:
+    1. 제공된 문맥 내의 정보를 우선적으로 사용하세요.
+    2. 답변은 한국어로 명확하고 구조화되게 작성하세요.
+    3. 웹 검색 결과가 포함된 경우, 해당 정보도 적절히 활용하세요.
+    4. 확실하지 않은 정보는 추측하지 마세요."""),
+            ("human", """문맥(Context):
+    {context}
 
-질문: {question}
+    질문: {question}
 
-답변:""")
-    ])
+    답변:""")
+        ])
     
     chain = prompt | llm | StrOutputParser()
     answer = chain.invoke({"context": context, "question": question})
