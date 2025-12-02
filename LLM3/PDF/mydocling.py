@@ -3,6 +3,7 @@ import os
 import warnings
 warnings.filterwarnings('ignore')
 from dotenv import load_dotenv
+load_dotenv()
 
 from docling.document_converter import DocumentConverter
 from docling.datamodel.base_models import InputFormat
