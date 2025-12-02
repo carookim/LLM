@@ -25,15 +25,15 @@ if not os.environ.get('OPENAI_API_KEY'):
     raise ValueError('key check....')
 
 class CGRAState(TypedDict):
-    question : str
-    documents : List[Document]
+    question : str #
+    documents : List[Document] #
     filtered_documents: List[Document] # 관련성 평가를 통과한 문서
     web_search_needed : str   # 웹검색 여부(yes / no)
-    context : str
-    answer : str
+    context : str #
+    answer : str #
     grade_results : List[str]   #각 문서의 평가 결과
 
-# 문서
+# Step 1. 문서
 path = r'C:\2.Lecture\LLM2\LLM3\advenced\sample_docs'
 loader = DirectoryLoader(
     path = path,
@@ -43,24 +43,25 @@ loader = DirectoryLoader(
 )
 docs = loader.load()
 
-# 텍스트 분할
+# Step 2. 텍스트 분할
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=300, chunk_overlap = 50
 )
 doc_splits = text_splitter.split_documents(docs)
-# 임베딩 및 VectorDB
+
+# Step 3. 임베딩 및 VectorDB (청크)
 vectorstore = Chroma.from_documents(
     documents=doc_splits,
     collection_name='crag_collection',
     embedding=OpenAIEmbeddings(model='text-embedding-3-small')
 )
 
-# 리트리버 설정 
+# Step 4. 리트리버 설정 
 retriever = vectorstore.as_retriever(search_kwargs={'k':3})
 
 print(f' {len(doc_splits)}개 청크로 VectorDB 구축 완료')
 
-# 문서 관련성 평가를 위한 Grader 정의
+# Optional : 문서 관련성 평가를 위한 Grader 정의
 from pydantic import BaseModel, Field
 class GradeDocuments(BaseModel):
     '''문서 관련성 평가 결과를 위한 pydantic 모델'''
