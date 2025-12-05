@@ -1,3 +1,4 @@
+# LangSmith API를 이용한 LLM 모니터링
 import os
 import warnings
 warnings.filterwarnings("ignore")
@@ -17,15 +18,15 @@ from langsmith import Client
 from langsmith.run_helpers import traceable
 
 # 환경설정
-load_dotenv
+load_dotenv()
 
 # langsmith 추적 활성화
 os.environ['LANGCHAIN_TRACING_V2'] = 'true'
 os.environ['LANGCHAIN_PROJECT'] = 'langsmith_prj_001'
 print(f"프로젝트 : {os.getenv('LANGCHAIN_PROJECT')}")
 
-llm = ChatOpenAI(model='gpt-4o-mini')
-prompt = ChatPromptTemplate.from_template('{question}에 대해서')
+llm = ChatOpenAI(model = 'gpt-4o-mini')
+prompt = ChatPromptTemplate.from_template('{question}에대해서 간단하게 설명해주세요')
 chain = prompt | llm | StrOutputParser()
 
 test_questions = [
@@ -33,33 +34,33 @@ test_questions = [
 ]
 for q in test_questions:
     response = chain.invoke({'question':q})
-    print(f'질문:{q} 답변 : {response}')
-    
+    print(f'질문 : {q}  답변 : {response}')
+
+
 # @traceable 로 설정된 함수는 자동으로 추적
-@traceable(name=f"custom_qa_fuction_{os.getenv('LANGCHAIN_PROJECT')}")
+@traceable(name=f'custom_qa_function_{os.getenv('LANGCHAIN_PROJECT')}')
 def answer_question(question:str)->str:
-    prompt = f'다음 질문에 대해서 100자 이내로 요약해서 답변해주세요.'
+    prompt = f'다음 질문에 대해서 100자 이내로 요약해서 답변해주세요 : {question}'
     chain = llm | StrOutputParser()
     return chain.invoke(prompt)
-# “같은 구조에서 여러 프롬프트 쓰기” → invoke 시 prompt 전달
-# “프롬프트 구조까지 정형화해서 재사용” → chain에 prompt 포함
 
 result = answer_question('프로그래밍 전문가가 되는 방법 및 가이드')
 print(f'answer_question : {result}')
 
 # client 직접사용
 client = Client()
-
 # 프로젝트 목록조회
 print('프로젝트 목록조회')
 project_lists = list(client.list_projects())
 for project in project_lists:
     print(project.name)
-    
+
+
 # 데이터 셋 생성
+dataset_name=f"{os.getenv('LANGCHAIN_PROJECT')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 dataset = client.create_dataset(
-    dataset_name=f'{os.getenv("LANGCHAIN_PROJECT")}_001',
-    description=f'{os.getenv('LANGCHAIN_PROJECT')}_QA 평가용 데이터셋'
+    dataset_name=dataset_name,
+    description=os.getenv('LANGCHAIN_PROJECT') + '_QA 평가용 데이터셋'
 )
 # 평가용 예제
 examples = [
@@ -84,12 +85,11 @@ for ex in examples:
     )
 print(f'    {len(examples)}개 예제 추가 완료')
 
-# 테스트 로직
 from langsmith.evaluation import evaluate
+client = Client()
 # 평가모델 정의
 llm = ChatOpenAI(model='gpt-4o-mini',temperature=0)
-
-# 평가 함수 실행
+#평가 함수 실행
 def predict(inputs:str)->Dict[str,str]:
     q = inputs['question']
     result = llm.invoke(f'{q} 간단히 답해줘')
@@ -108,11 +108,9 @@ def simple_correctness(run, example):
         "comment": f"gold={gold} | pred={pred}"
     }
 # 평가실행
-# 데이터셋 이름은 최신상태로
-# datasets = client.list_datasets(order='desc',limit=1)
 results = evaluate(
     predict,
-    data=dataset.name,            
+    data=dataset_name,            
     evaluators=[simple_correctness]
 )
 
@@ -122,5 +120,5 @@ print(results)
 
 
 # 정리 (테스트 후 삭제)
-client.delete_dataset(dataset_id=dataset.id)
-print(' 데이터셋 삭제완료')
+# client.delete_dataset(dataset_id=dataset.id)
+# print(' 데이터셋 삭제완료')
