@@ -132,6 +132,8 @@ class HybridRAGState(TypedDict):
     web_docs : List[Document]
     need_web_search : str
     answer : str
+    need_web_search : str
+    ref_doc : List[dict]
 
 class RelevanceGrade(BaseModel):
     '''문서 관련성 평가 결과'''
