@@ -20,5 +20,5 @@ def build_rag_chain(vectordb,question):
         context=context,
         question=question
     )
-    response = llm(question)
+    response = llm(message)
     return response.content
