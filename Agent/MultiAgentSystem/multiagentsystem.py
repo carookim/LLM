@@ -66,3 +66,35 @@ import numpy as np
 
 # 기본 구조
 from DefaultAgent import AgentState, Message, SpecializedAgent,Corrdinator
+
+# RAG 특화 에이전트 
+class  VectorDBAgent(SpecializedAgent):
+    '''벡터 DB 검색 에이전트 (Chroma)'''
+    def __init__(self, name:str):
+        super().__init__(name,'vector_search')
+        # ChromaDB 초기화
+        self.client = chromadb.Client(Settings(
+            annoymized_telemetry=False, # 익명의 사용정보 수집 및 전송 비활성화
+            allow_reset=True # 외부에서 db를 reset 할 수 있는 api허용
+        ))
+        try:
+            self.client.delete_collection('movies')
+        except:
+            pass
+        self.collection = self.client.create_collection(
+            name = 'movies',
+            metadata={'description':'movie information database'}
+        )
+        self._initialize_db()
+        
+    def _get_embedding_db(self,text:str) -> List[float]:
+        '''openai 임베딩 생성'''
+        try:
+            response = openai.embeddings.create(
+                model='text-embedding-3-small'
+                input = text
+            )
+            return response.data[0].embedding
+        except Exception as e:
+            print(f"임베딩 생성 실패 : {e}")
+            return [0.0]*1536
